@@ -218,3 +218,39 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---- Project ----
+# Data (datasets are never committed)
+data/
+datasets/
+outputs/
+runs/
+checkpoints/
+wandb/
+mlruns/
+*.zip
+*.tar
+*.tar.gz
+
+# Model weights
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.engine
+*.safetensors
+*.bin
+*.weights
+
+# Virtual environments
+.venv/
+
+# Secrets
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials*.json
+kaggle.json
+additional_assets
