@@ -97,6 +97,56 @@ def data_split(
     typer.echo(f"{counts} -> {out}")
 
 
+@data_app.command("stats")
+def data_stats(
+    root: RootOpt,
+    out: Annotated[Path, typer.Option(help="Output folder for the stats files.")],
+    train_xml: TrainXmlOpt = None,
+    test_xml: TestXmlOpt = None,
+    images: Annotated[
+        Path | None, typer.Option(help="Where to look for image folders (default: --root).")
+    ] = None,
+) -> None:
+    """Per-sequence stats (sequence_stats.csv) and a first-frame contact sheet."""
+    import csv
+
+    from traffic_analytics.data.detrac import DetracError, parse_sequence
+    from traffic_analytics.data.discover import discover
+    from traffic_analytics.data.files import atomic_path
+    from traffic_analytics.data.stats import (
+        STATS_COLUMNS,
+        contact_sheet,
+        folder_totals,
+        group_summary,
+        image_size,
+        sequence_stats,
+    )
+
+    try:
+        found = discover(root, train_xml, test_xml, images)
+        rows = []
+        for folder, xmls in (("train", found.train), ("test", found.test)):
+            for name, xml in sorted(xmls.items()):
+                size = image_size(found.image_dirs.get(name))
+                rows.append(sequence_stats(parse_sequence(xml), folder, size))
+                typer.echo(f"[{folder}] {name}")
+    except DetracError as err:
+        _fail(err)
+
+    out.mkdir(parents=True, exist_ok=True)
+    with (
+        atomic_path(out / "sequence_stats.csv") as tmp,
+        tmp.open("w", newline="", encoding="utf-8") as f,
+    ):
+        writer = csv.DictWriter(f, fieldnames=STATS_COLUMNS)
+        writer.writeheader()
+        writer.writerows(rows)
+    contact_sheet(rows, found.image_dirs, out / "contact_sheet.jpg")
+    for line in [*found.warnings, *group_summary(rows), *folder_totals(rows)]:
+        typer.echo(line)
+    typer.echo(f"output: {out / 'sequence_stats.csv'}, {out / 'contact_sheet.jpg'}")
+
+
 @data_app.command("prepare")
 def data_prepare(
     root: RootOpt,

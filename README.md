@@ -26,6 +26,7 @@ On Colab (CUDA torch preinstalled): `pip install -e .`
 ### Data preparation
 
 ```bash
+ta data stats --root /content/detrac --out /content/detrac_stats   # per-sequence stats + contact sheet
 ta data split --root /content/detrac                    # writes configs/splits.yaml (commit it)
 ta data prepare --root /content/detrac --out /content/detrac_prepared --stride 10
 ```
