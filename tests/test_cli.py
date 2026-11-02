@@ -36,3 +36,19 @@ def test_data_prepare_without_splits_fails(detrac_root, tmp_path) -> None:
     )
     assert result.exit_code == 1
     assert "ta data split" in result.output
+
+
+def test_data_preview(prepared) -> None:
+    args = ["data", "preview", "--prepared", str(prepared), "--split", "val", "--format", "yolo"]
+    result = CliRunner().invoke(app, args)
+    assert result.exit_code == 0, result.output
+    assert (prepared / "preview_val_yolo.jpg").is_file()
+    assert "3 images" in result.output
+
+
+def test_data_preview_bad_split(prepared) -> None:
+    result = CliRunner().invoke(
+        app, ["data", "preview", "--prepared", str(prepared), "--split", "x"]
+    )
+    assert result.exit_code == 1
+    assert "unknown split" in result.output

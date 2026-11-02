@@ -196,3 +196,33 @@ def data_prepare(
         _fail(err)
     for line in format_summary(summary):
         typer.echo(line)
+
+
+@data_app.command("preview")
+def data_preview(
+    prepared: Annotated[Path, typer.Option(help="Output folder of `ta data prepare`.")],
+    split: Annotated[str, typer.Option(help="train, val or test.")],
+    fmt: Annotated[str, typer.Option("--format", help="coco or yolo.")] = "coco",
+    n: Annotated[int, typer.Option(help="Number of images.")] = 12,
+    seed: int = 0,
+    out: Annotated[
+        Path | None,
+        typer.Option(help="Grid JPEG (default: <prepared>/preview_<split>_<format>.jpg)."),
+    ] = None,
+) -> None:
+    """Draw GT boxes and ignore regions (hatched) from prepared outputs on a grid, for QA."""
+    from traffic_analytics.data.detrac import DetracError
+    from traffic_analytics.data.preview import load_items, render_grid, sample
+
+    out = out or prepared / f"preview_{split}_{fmt}.jpg"
+    try:
+        if n < 1:
+            raise DetracError(f"--n must be >= 1: {n}")
+        items = sample(load_items(prepared, split, fmt), n, seed)
+    except DetracError as err:
+        _fail(err)
+    render_grid(items, out)
+    boxes = sum(len(i.boxes) for i in items)
+    regions = sum(len(i.ignore) for i in items)
+    typer.echo(f"{len(items)} images, {boxes} boxes, {regions} ignore regions")
+    typer.echo(f"output: {out}")

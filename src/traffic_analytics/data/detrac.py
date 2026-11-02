@@ -72,6 +72,13 @@ class Box:
             self.height / height,
         )
 
+    @classmethod
+    def from_yolo(
+        cls, cx: float, cy: float, w: float, h: float, width: float, height: float
+    ) -> Box:
+        """Inverse of `to_yolo`."""
+        return cls((cx - w / 2) * width, (cy - h / 2) * height, w * width, h * height)
+
     def as_list(self, ndigits: int = 2) -> list[float]:
         return [round(v, ndigits) for v in (self.left, self.top, self.width, self.height)]
 

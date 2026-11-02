@@ -52,3 +52,16 @@ def scenes_file(tmp_path: Path) -> Path:
     path = tmp_path / "scenes.yaml"
     path.write_text(yaml.safe_dump({"scenes": SCENES}))
     return path
+
+
+STRIDES = {"train": 1, "val": 1, "test": 1}
+
+
+@pytest.fixture
+def prepared(detrac_root: Path, splits_file: Path, scenes_file: Path, tmp_path: Path) -> Path:
+    """`prepare` run on the fake download, every frame kept."""
+    from traffic_analytics.data.prepare import prepare
+
+    out = tmp_path / "out"
+    prepare(detrac_root, out, splits_file, scenes_file, STRIDES)
+    return out

@@ -5,22 +5,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 import yaml
-from conftest import IMAGE_SIZE
+from conftest import IMAGE_SIZE, STRIDES
 from PIL import Image
 
 from traffic_analytics.data.detrac import Box, DetracError
 from traffic_analytics.data.export import GREY, mask_regions
 from traffic_analytics.data.prepare import prepare
 
-STRIDES = {"train": 1, "val": 1, "test": 1}
 WIDTH, HEIGHT = IMAGE_SIZE
-
-
-@pytest.fixture
-def prepared(detrac_root: Path, splits_file: Path, scenes_file: Path, tmp_path: Path) -> Path:
-    out = tmp_path / "out"
-    prepare(detrac_root, out, splits_file, scenes_file, STRIDES)
-    return out
 
 
 def _coco(out: Path, folder: str) -> dict:
