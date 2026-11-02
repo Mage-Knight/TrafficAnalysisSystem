@@ -23,7 +23,7 @@ from traffic_analytics.data import export
 from traffic_analytics.data.detrac import DetracError, Sequence, parse_sequence
 from traffic_analytics.data.discover import Discovery, discover
 from traffic_analytics.data.files import atomic_path, copy_file, write_text
-from traffic_analytics.data.splits import SPLITS, load_splits, validate_splits
+from traffic_analytics.data.splits import SPLITS, load_scenes, load_splits, validate_splits
 
 DEFAULT_IMAGE_SIZE = (960, 540)  # DETRAC frame size; used only if a sequence has no images
 GENERATED_DIRS = ("coco", "yolo", "mot")
@@ -47,13 +47,14 @@ class PrepareSummary:
     stats: dict[str, SplitStats] = field(default_factory=dict)
 
 
-def _settings(strides: dict[str, int], splits_path: Path) -> dict:
+def _settings(strides: dict[str, int], splits_path: Path, scenes_path: Path) -> dict:
     return {
         "strides": strides,
         "grey": export.GREY,
         "jpeg_quality": export.JPEG_QUALITY,
         "ignore_drop_fraction": export.IGNORE_DROP_FRACTION,
         "splits_sha256": hashlib.sha256(splits_path.read_bytes()).hexdigest(),
+        "scenes_sha256": hashlib.sha256(scenes_path.read_bytes()).hexdigest(),
     }
 
 
@@ -142,6 +143,7 @@ def prepare(
     root: Path,
     out: Path,
     splits_path: Path,
+    scenes_path: Path,
     strides: dict[str, int],
     force: bool = False,
     train_xml: Path | None = None,
@@ -156,10 +158,16 @@ def prepare(
     splits = load_splits(splits_path)
     discovery = discover(root, train_xml, test_xml, images)
     validate_splits(splits, discovery.train.keys(), discovery.test.keys())
+    if not scenes_path.is_file():
+        raise DetracError(f"scenes file {scenes_path} not found (configs/scenes.yaml)")
+    scenes = load_scenes(scenes_path)
+    if missing := sorted(n for names in splits.values() for n in names if n not in scenes):
+        raise DetracError(f"{scenes_path}: sequences without a scene: {missing}")
 
     out.mkdir(parents=True, exist_ok=True)
-    _check_config(out, _settings(strides, splits_path), force)
+    _check_config(out, _settings(strides, splits_path, scenes_path), force)
     copy_file(splits_path, out / "splits.yaml")
+    copy_file(scenes_path, out / "scenes.yaml")
 
     summary = PrepareSummary(out, discovery)
     metadata: list[tuple] = []
@@ -187,8 +195,8 @@ def prepare(
 
                 stats.sequences += 1
                 stats.missing_images += missing
-                targets.writerows(export.target_rows(seq, split))
-                metadata.append(export.metadata_row(seq, split))
+                targets.writerows(export.target_rows(seq, split, scenes[name]))
+                metadata.append(export.metadata_row(seq, split, scenes[name]))
                 if img_dir is not None:
                     _export_detection(
                         seq, split, strides[split], img_dir, available, size, out, coco, stats

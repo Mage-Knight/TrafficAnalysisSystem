@@ -40,3 +40,15 @@ def splits_file(tmp_path: Path) -> Path:
     path = tmp_path / "splits.yaml"
     save_splits(path, SPLITS)
     return path
+
+
+SCENES = {"s0000": ["MVI_00001"], "s0003": ["MVI_00003"], "s0002": ["MVI_00002"]}
+
+
+@pytest.fixture
+def scenes_file(tmp_path: Path) -> Path:
+    import yaml
+
+    path = tmp_path / "scenes.yaml"
+    path.write_text(yaml.safe_dump({"scenes": SCENES}))
+    return path

@@ -17,9 +17,9 @@ WIDTH, HEIGHT = IMAGE_SIZE
 
 
 @pytest.fixture
-def prepared(detrac_root: Path, splits_file: Path, tmp_path: Path) -> Path:
+def prepared(detrac_root: Path, splits_file: Path, scenes_file: Path, tmp_path: Path) -> Path:
     out = tmp_path / "out"
-    prepare(detrac_root, out, splits_file, STRIDES)
+    prepare(detrac_root, out, splits_file, scenes_file, STRIDES)
     return out
 
 
@@ -127,16 +127,20 @@ def test_csv_tables(prepared: Path) -> None:
     first = targets[0]
     assert first["sequence"] == "MVI_00001" and first["split"] == "train"
     assert first["speed"] == "6.86" and first["weather"] == "sunny"
+    assert first["scene"] == "s0000"
     with (prepared / "metadata.csv").open() as f:
         meta = {r["sequence"]: r for r in csv.DictReader(f)}
     assert meta["MVI_00002"]["split"] == "test"
+    assert meta["MVI_00002"]["scene"] == "s0002"
     assert (meta["MVI_00002"]["boxes"], meta["MVI_00002"]["tracks"]) == ("5", "2")
     assert (meta["MVI_00002"]["n_car"], meta["MVI_00002"]["n_bus"]) == ("3", "2")
 
 
-def test_stride_samples_frames(detrac_root: Path, splits_file: Path, tmp_path: Path) -> None:
+def test_stride_samples_frames(
+    detrac_root: Path, splits_file: Path, scenes_file: Path, tmp_path: Path
+) -> None:
     out = tmp_path / "out"
-    summary = prepare(detrac_root, out, splits_file, {"train": 2, "val": 3, "test": 3})
+    summary = prepare(detrac_root, out, splits_file, scenes_file, {"train": 2, "val": 3, "test": 3})
     assert sorted(p.name for p in (out / "coco/train").glob("*.jpg")) == [
         "MVI_00001_img00001.jpg",
         "MVI_00001_img00003.jpg",
@@ -146,11 +150,11 @@ def test_stride_samples_frames(detrac_root: Path, splits_file: Path, tmp_path: P
 
 
 def test_rerun_idempotent_and_config_guard(
-    prepared: Path, detrac_root: Path, splits_file: Path
+    prepared: Path, detrac_root: Path, splits_file: Path, scenes_file: Path
 ) -> None:
     jpgs = sorted(prepared.rglob("*.jpg"))
     mtimes = [p.stat().st_mtime_ns for p in jpgs]
-    summary = prepare(detrac_root, prepared, splits_file, STRIDES)
+    summary = prepare(detrac_root, prepared, splits_file, scenes_file, STRIDES)
     assert summary.stats["train"].images_written == 0
     assert summary.stats["train"].images_skipped == 3
     assert [p.stat().st_mtime_ns for p in jpgs] == mtimes
@@ -158,20 +162,26 @@ def test_rerun_idempotent_and_config_guard(
     assert (prepared / "splits.yaml").read_bytes() == splits_file.read_bytes()
     config = json.loads((prepared / "prepare_config.json").read_text())
     assert config["settings"]["strides"] == STRIDES
+    assert len(config["settings"]["scenes_sha256"]) == 64
+    assert (prepared / "scenes.yaml").read_bytes() == scenes_file.read_bytes()
 
     with pytest.raises(DetracError, match="different settings"):
-        prepare(detrac_root, prepared, splits_file, {**STRIDES, "train": 2})
-    prepare(detrac_root, prepared, splits_file, {**STRIDES, "train": 2}, force=True)
+        prepare(detrac_root, prepared, splits_file, scenes_file, {**STRIDES, "train": 2})
+    prepare(detrac_root, prepared, splits_file, scenes_file, {**STRIDES, "train": 2}, force=True)
     assert len(list((prepared / "coco/train").glob("*.jpg"))) == 2
 
 
 def test_missing_splits_file(detrac_root: Path, tmp_path: Path) -> None:
     with pytest.raises(DetracError, match="ta data split"):
-        prepare(detrac_root, tmp_path / "out", tmp_path / "nope.yaml", STRIDES)
+        prepare(
+            detrac_root, tmp_path / "out", tmp_path / "nope.yaml", tmp_path / "nope.yaml", STRIDES
+        )
 
 
-def test_missing_images_counted(detrac_root: Path, splits_file: Path, tmp_path: Path) -> None:
+def test_missing_images_counted(
+    detrac_root: Path, splits_file: Path, scenes_file: Path, tmp_path: Path
+) -> None:
     (detrac_root / "Insight-MVT_Annotation/MVI_00002/img00002.jpg").unlink()
-    summary = prepare(detrac_root, tmp_path / "out", splits_file, STRIDES)
+    summary = prepare(detrac_root, tmp_path / "out", splits_file, scenes_file, STRIDES)
     assert summary.stats["test"].missing_images == 1
     assert len(_coco(tmp_path / "out", "test")["images"]) == 2

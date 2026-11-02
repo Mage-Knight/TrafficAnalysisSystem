@@ -19,6 +19,7 @@ COCO_DIRS = {"train": "train", "val": "valid", "test": "test"}  # RF-DETR folder
 
 TARGET_COLUMNS = (
     "sequence",
+    "scene",
     "split",
     "frame",
     "track_id",
@@ -37,6 +38,7 @@ TARGET_COLUMNS = (
 )
 METADATA_COLUMNS = (
     "sequence",
+    "scene",
     "split",
     "weather",
     "camera_state",
@@ -208,12 +210,13 @@ def seqinfo_ini(seq: Sequence, length: int, width: int, height: int) -> str:
     )
 
 
-def target_rows(seq: Sequence, split: str) -> Iterator[tuple]:
+def target_rows(seq: Sequence, split: str, scene: str) -> Iterator[tuple]:
     for frame in seq.frames:
         for t in frame.targets:
             b = t.box
             yield (
                 seq.name,
+                scene,
                 split,
                 frame.num,
                 t.track_id,
@@ -232,10 +235,11 @@ def target_rows(seq: Sequence, split: str) -> Iterator[tuple]:
             )
 
 
-def metadata_row(seq: Sequence, split: str) -> tuple:
+def metadata_row(seq: Sequence, split: str, scene: str) -> tuple:
     counts = seq.class_counts()
     return (
         seq.name,
+        scene,
         split,
         seq.weather or "",
         seq.camera_state or "",

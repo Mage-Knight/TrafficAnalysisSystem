@@ -1,0 +1,152 @@
+# Sequence -> scene label (same camera viewpoint), used only to form the train/val split:
+# a scene is held out as a whole so near-duplicate sequences never land in both train and val.
+# Sequences keep their own names everywhere; this file only groups them.
+# Default scene = 4-digit MVI prefix; groups of prefixes judged to share a viewpoint from the
+# contact sheet (reports/data/sequence_stats.csv, `ta data stats`) are marked `same viewpoint`.
+scenes:
+  # ---- train folder ----
+  s2001:  # 2001+2006 same viewpoint; sunny
+    - MVI_20011
+    - MVI_20012
+    - MVI_20061
+    - MVI_20062
+    - MVI_20063
+    - MVI_20064
+    - MVI_20065
+  s2003:  # 2003+2005 same viewpoint; sunny
+    - MVI_20032
+    - MVI_20033
+    - MVI_20034
+    - MVI_20035
+    - MVI_20051
+    - MVI_20052
+  s3976:  # 3976+3977 same viewpoint; night
+    - MVI_39761
+    - MVI_39771
+  s3978:  # night
+    - MVI_39781
+  s3980:  # 3980+3981+3982 same viewpoint; night
+    - MVI_39801
+    - MVI_39811
+    - MVI_39821
+  s3985:  # night
+    - MVI_39851
+  s3986:  # night
+    - MVI_39861
+  s3993:  # cloudy
+    - MVI_39931
+  s4013:  # cloudy
+    - MVI_40131
+  s4014:  # cloudy
+    - MVI_40141
+  s4015:  # cloudy
+    - MVI_40152
+  s4016:  # 4016+4017+4018 same viewpoint; cloudy
+    - MVI_40161
+    - MVI_40162
+    - MVI_40171
+    - MVI_40172
+    - MVI_40181
+  s4019:  # cloudy
+    - MVI_40191
+    - MVI_40192
+  s4020:  # cloudy
+    - MVI_40201
+    - MVI_40204
+  s4021:  # cloudy
+    - MVI_40211
+    - MVI_40212
+    - MVI_40213
+  s4024:  # cloudy
+    - MVI_40241
+    - MVI_40243
+    - MVI_40244
+  s4073:  # 4073+4075 same viewpoint; night
+    - MVI_40732
+    - MVI_40751
+    - MVI_40752
+  s4087:  # rainy
+    - MVI_40871
+  s4096:  # night
+    - MVI_40962
+    - MVI_40963
+  s4098:  # night
+    - MVI_40981
+  s4099:  # night
+    - MVI_40991
+    - MVI_40992
+  s4106:  # 4106+4107 same viewpoint; sunny
+    - MVI_41063
+    - MVI_41073
+  s6352:  # rainy
+    - MVI_63521
+    - MVI_63525
+  s6354:  # rainy
+    - MVI_63544
+  s6355:  # 6355+6356 same viewpoint; rainy
+    - MVI_63552
+    - MVI_63553
+    - MVI_63554
+    - MVI_63561
+    - MVI_63562
+    - MVI_63563
+  # ---- test folder ----
+  s3903:  # sunny
+    - MVI_39031
+  s3905:  # sunny
+    - MVI_39051
+  s3921:  # sunny
+    - MVI_39211
+  s3927:  # sunny
+    - MVI_39271
+  s3931:  # sunny
+    - MVI_39311
+  s3936:  # sunny
+    - MVI_39361
+  s3937:  # sunny
+    - MVI_39371
+  s3940:  # sunny
+    - MVI_39401
+  s3950:  # 3950+3951 same viewpoint; cloudy
+    - MVI_39501
+    - MVI_39511
+  s4070:  # cloudy
+    - MVI_40701
+  s4071:  # cloudy
+    - MVI_40711
+    - MVI_40712
+    - MVI_40714
+  s4074:  # night
+    - MVI_40742
+    - MVI_40743
+  s4076:  # night
+    - MVI_40761
+    - MVI_40762
+    - MVI_40763
+  s4077:  # night
+    - MVI_40771
+    - MVI_40772
+    - MVI_40773
+    - MVI_40774
+    - MVI_40775
+  s4079:  # night
+    - MVI_40792
+    - MVI_40793
+  s4085:  # cloudy
+    - MVI_40851
+    - MVI_40852
+    - MVI_40853
+    - MVI_40854
+    - MVI_40855
+  s4086:  # rainy
+    - MVI_40863
+    - MVI_40864
+  s4089:  # rainy
+    - MVI_40891
+    - MVI_40892
+  s4090:  # rainy
+    - MVI_40901
+    - MVI_40902
+    - MVI_40903
+    - MVI_40904
+    - MVI_40905
