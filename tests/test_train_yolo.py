@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import typer
 import yaml
 from typer.testing import CliRunner
 
@@ -92,11 +93,11 @@ def test_check_config_wandb_project() -> None:
         check_config({})
 
 
-def test_train_yolo_help_lists_options() -> None:
-    result = CliRunner().invoke(app, ["train", "yolo", "--help"])
-    assert result.exit_code == 0
-    assert "--device" in result.output
-    assert "--no-wandb" in result.output
+def test_train_yolo_options() -> None:
+    # Inspect the Click command, not rendered help: Rich output differs under GITHUB_ACTIONS.
+    command = typer.main.get_command(app).commands["train"].commands["yolo"]
+    flags = {flag for p in command.params for flag in (*p.opts, *p.secondary_opts)}
+    assert {"--config", "--prepared", "--resume", "--device", "--wandb", "--no-wandb"} <= flags
 
 
 def test_train_refuses_existing_run_dir(prepared, tmp_path) -> None:
