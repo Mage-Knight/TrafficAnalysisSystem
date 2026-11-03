@@ -226,3 +226,43 @@ def data_preview(
     regions = sum(len(i.ignore) for i in items)
     typer.echo(f"{len(items)} images, {boxes} boxes, {regions} ignore regions")
     typer.echo(f"output: {out}")
+
+
+train_app = typer.Typer(help="Detector training (Colab GPU).", no_args_is_help=True)
+app.add_typer(train_app, name="train")
+
+
+@train_app.command("yolo")
+def train_yolo(
+    config: Annotated[Path, typer.Option(help="Training config YAML.")] = Path(
+        "configs/train/yolo_s.yaml"
+    ),
+    prepared: Annotated[
+        Path | None, typer.Option(help="`ta data prepare` output (default: config `prepared`).")
+    ] = None,
+    resume: Annotated[
+        bool, typer.Option(help="Continue <project>/<name>/weights/last.pt.")
+    ] = False,
+    device: Annotated[
+        str | None, typer.Option(help="0, 0,1 or cpu (default: config `device`, else auto).")
+    ] = None,
+    wandb: Annotated[
+        bool | None, typer.Option("--wandb/--no-wandb", help="Log to W&B (default: config).")
+    ] = None,
+) -> None:
+    """Train the Ultralytics YOLO baseline; checkpoints in `project`, optional W&B."""
+    from traffic_analytics.config import load_config
+    from traffic_analytics.data.detrac import DetracError
+    from traffic_analytics.detection.yolo import REQUIRED_KEYS, check_config, train
+
+    try:
+        cfg = load_config(config, REQUIRED_KEYS)
+        if device is not None:
+            cfg["device"] = device
+        if wandb is not None:
+            cfg["wandb"] = wandb
+        check_config(cfg)
+        out = train(cfg, config, prepared or Path(cfg["prepared"]), resume, log=typer.echo)
+    except DetracError as err:
+        _fail(err)
+    typer.echo(f"output: {out}")

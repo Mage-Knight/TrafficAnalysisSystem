@@ -16,6 +16,12 @@ dependencies = [
 [project.optional-dependencies]
 ml = [
     "torch>=2.4",
+    "torchvision>=0.19",
+]
+yolo = [
+    "traffic-analytics[ml]",
+    "ultralytics>=8.4",
+    "wandb>=0.19",
 ]
 
 [project.scripts]
@@ -37,6 +43,7 @@ packages = ["src/traffic_analytics"]
 
 [tool.uv.sources]
 torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
 
 [[tool.uv.index]]
 name = "pytorch-cpu"

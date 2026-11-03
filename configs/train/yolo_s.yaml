@@ -1,0 +1,14 @@
+# YOLO baseline (Ultralytics, AGPL-3.0): ta train yolo --config configs/train/yolo_s.yaml
+# ${TA_ROOT} defaults to the current directory (run from the repo root).
+model: yolo26s.pt
+prepared: ${TA_ROOT}/data/prepared  # `ta data prepare --out` folder
+project: ${TA_ROOT}/runs/yolo  # run dir = project/name; holds last.pt, best.pt, run_meta.json
+name: yolo_s
+device: null  # auto (first GPU, else CPU with a warning); or 0, "0,1", cpu
+wandb: true  # --no-wandb to train without W&B
+wandb_project: traffic-analytics
+imgsz: 640
+epochs: 50
+batch: 16
+seed: 0
+workers: 8  # Ultralytics caps this at the CPU count
