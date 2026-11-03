@@ -21,7 +21,7 @@ ml = [
 yolo = [
     "traffic-analytics[ml]",
     "ultralytics>=8.4",
-    "wandb>=0.19",
+    "wandb>=0.30",  # wandb.login(prompt=False)
 ]
 
 [project.scripts]

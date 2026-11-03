@@ -2045,7 +2045,7 @@ requires-dist = [
     { name = "traffic-analytics", extras = ["ml"], marker = "extra == 'yolo'" },
     { name = "typer", specifier = ">=0.12" },
     { name = "ultralytics", marker = "extra == 'yolo'", specifier = ">=8.4" },
-    { name = "wandb", marker = "extra == 'yolo'", specifier = ">=0.19" },
+    { name = "wandb", marker = "extra == 'yolo'", specifier = ">=0.30" },
 ]
 provides-extras = ["ml", "yolo"]
 
