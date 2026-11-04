@@ -1,3 +1,4 @@
+import json
 import sys
 from pathlib import Path
 
@@ -10,10 +11,14 @@ from traffic_analytics.cli import app
 from traffic_analytics.config import load_config
 from traffic_analytics.data import export
 from traffic_analytics.data.detrac import DetracError
+from traffic_analytics.detection import yolo
 from traffic_analytics.detection.yolo import (
     REQUIRED_KEYS,
     check_config,
+    package_version,
     runtime_data_yaml,
+    start_run,
+    train_kwargs,
     write_runtime_data_yaml,
 )
 
@@ -91,6 +96,75 @@ def test_check_config_wandb_project() -> None:
         check_config({"wandb": True})
     with pytest.raises(DetracError, match="wandb_project"):
         check_config({})
+
+
+def test_check_config_train_args() -> None:
+    check_config({"wandb": False, "train_args": None})
+    check_config({"wandb": False, "train_args": {"mosaic": 0.5}})
+    with pytest.raises(DetracError, match="must be a mapping"):
+        check_config({"wandb": False, "train_args": ["mosaic"]})
+    with pytest.raises(DetracError, match="cannot set: epochs"):
+        check_config({"wandb": False, "train_args": {"epochs": 3, "mosaic": 0.5}})
+
+
+TRAIN_CFG = {"imgsz": 640, "epochs": 3, "batch": 16, "seed": 0, "workers": 8}
+
+
+def test_train_kwargs_without_train_args() -> None:
+    out = Path("/runs/yolo/yolo_s")
+    assert train_kwargs(TRAIN_CFG, "/run/data.yaml", out) == {
+        **TRAIN_CFG,
+        "data": "/run/data.yaml",
+        "project": "/runs/yolo",
+        "name": "yolo_s",
+        "exist_ok": True,
+        "save_period": -1,
+    }
+
+
+def test_train_kwargs_merges_train_args() -> None:
+    out = Path("/runs/yolo/yolo_s")
+    base = train_kwargs(TRAIN_CFG, "/run/data.yaml", out)
+    cfg = {**TRAIN_CFG, "train_args": {"mosaic": 0.5, "hsv_v": 0.6}}
+    assert train_kwargs(cfg, "/run/data.yaml", out) == {**base, "mosaic": 0.5, "hsv_v": 0.6}
+
+
+def test_train_rejects_reserved_train_arg(prepared, tmp_path) -> None:
+    cfg = {k: 1 for k in REQUIRED_KEYS} | {"train_args": {"epochs": 3}}
+    path = _write_cfg(tmp_path, **cfg)
+    args = ["train", "yolo", "--config", str(path), "--prepared", str(prepared), "--no-wandb"]
+    result = CliRunner().invoke(app, args)
+    assert result.exit_code == 1
+    assert "error: `train_args` cannot set: epochs" in result.output
+
+
+def _run_cfg(tmp_path: Path) -> dict:
+    return {"project": str(tmp_path / "runs"), "name": "yolo_s"}
+
+
+def test_start_run_records_prepare_config(prepared, tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(yolo, "package_version", lambda name: "9.9.9")
+    settings = {"settings": {"strides": {"train": 10}}}
+    (prepared / "prepare_config.json").write_text(json.dumps(settings))
+    logged: list[str] = []
+    meta = start_run(_run_cfg(tmp_path), prepared, Path("cfg.yaml"), logged.append)
+    assert meta["prepare_config"] == settings
+    assert meta["albumentations"] == "9.9.9"
+    assert not [line for line in logged if "prepare_config" in line]
+
+
+def test_start_run_without_prepare_config(prepared, tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(yolo, "package_version", lambda name: None)
+    logged: list[str] = []
+    meta = start_run(_run_cfg(tmp_path), prepared, Path("cfg.yaml"), logged.append)
+    assert meta["prepare_config"] is None
+    assert meta["albumentations"] is None
+    assert [line for line in logged if "prepare_config.json" in line]
+
+
+def test_package_version() -> None:
+    assert package_version("pyyaml")
+    assert package_version("no-such-package-xyz") is None
 
 
 def test_train_yolo_options() -> None:

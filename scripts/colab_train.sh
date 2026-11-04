@@ -107,7 +107,7 @@ kill -KILL \$pid; rm -f \"\$pidfile\"; echo \"killed pid \$pid (SIGKILL after 30
       [ -z "$FOLLOW" ] || clear
       echo "$out"
       [ -n "$FOLLOW" ] && ! grep -q '^not running' <<<"$out" || break
-      sleep 60
+      sleep 2
     done
     ;;
   log) remote "$LOG_LINES | tail -n $N" ;;

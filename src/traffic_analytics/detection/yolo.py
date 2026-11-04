@@ -7,6 +7,7 @@ import os
 import signal
 import subprocess
 from collections.abc import Callable
+from importlib import metadata
 from pathlib import Path
 
 import yaml
@@ -25,6 +26,24 @@ REQUIRED_KEYS = (
     "seed",
     "workers",
 )
+# YOLO.train() arguments set by the trainer, its config keys or CLI flags, not by `train_args`.
+RESERVED_TRAIN_ARGS = frozenset(
+    {
+        "batch",
+        "data",
+        "device",
+        "epochs",
+        "exist_ok",
+        "imgsz",
+        "model",
+        "name",
+        "project",
+        "resume",
+        "save_period",
+        "seed",
+        "workers",
+    }
+)
 META_FILE = "run_meta.json"
 CPU_WARNING = """
 WARNING: no CUDA GPU found, training on CPU (very slow).
@@ -34,9 +53,16 @@ WARNING: no CUDA GPU found, training on CPU (very slow).
 
 
 def check_config(cfg: dict) -> None:
-    """`wandb_project` is required only when W&B logging is on."""
+    """`wandb_project` is required only when W&B logging is on; `train_args` must be a mapping."""
     if cfg.get("wandb", True) and not cfg.get("wandb_project"):
         raise DetracError("config needs `wandb_project` when `wandb` is true (or pass --no-wandb)")
+    train_args = cfg.get("train_args")
+    if train_args is None:
+        return
+    if not isinstance(train_args, dict):
+        raise DetracError("config `train_args` must be a mapping")
+    if reserved := sorted(RESERVED_TRAIN_ARGS & train_args.keys()):
+        raise DetracError(f"`train_args` cannot set: {', '.join(reserved)}")
 
 
 def runtime_data_yaml(prepared: Path) -> dict:
@@ -71,8 +97,41 @@ def git_info(repo: Path | None = None) -> dict:
     return {"commit": commit, "dirty": None if status is None else bool(status)}
 
 
+def package_version(name: str) -> str | None:
+    """Installed version of a package without importing it; None if it is not installed."""
+    try:
+        return metadata.version(name)
+    except metadata.PackageNotFoundError:
+        return None
+
+
+def prepare_config(prepared: Path) -> dict | None:
+    """`prepare_config.json` of the export (strides, split hashes); None if it is missing."""
+    path = prepared / "prepare_config.json"
+    if not path.is_file():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def run_dir(cfg: dict) -> Path:
     return Path(cfg["project"]) / cfg["name"]
+
+
+def train_kwargs(cfg: dict, data_yaml: str, out: Path) -> dict:
+    """Arguments for `YOLO.train()` on a fresh run, including the config's `train_args`."""
+    return {
+        "data": data_yaml,
+        "project": str(out.parent),
+        "name": out.name,
+        "exist_ok": True,  # start_run created the dir; never let Ultralytics pick name2
+        "save_period": -1,  # only last.pt and best.pt (disk space)
+        "imgsz": cfg["imgsz"],
+        "epochs": cfg["epochs"],
+        "batch": cfg["batch"],
+        "seed": cfg["seed"],
+        "workers": cfg["workers"],
+        **(cfg.get("train_args") or {}),
+    }
 
 
 def start_run(cfg: dict, prepared: Path, config_path: Path, log: Callable[[str], None]) -> dict:
@@ -84,11 +143,17 @@ def start_run(cfg: dict, prepared: Path, config_path: Path, log: Callable[[str],
     if git["dirty"]:
         log("warning: git tree is dirty; the recorded commit does not match the running code")
     data_yaml = write_runtime_data_yaml(prepared, out / "data.yaml")
+    export_config = prepare_config(prepared)
+    if export_config is None:
+        log(f"warning: no prepare_config.json in {prepared}; the run won't record its export")
     meta = {
         "git": git,
         "config_file": str(config_path),
         "config": cfg,
         "prepared": str(prepared),
+        "prepare_config": export_config,
+        # Ultralytics runs its default Albumentations transforms only when this is installed.
+        "albumentations": package_version("albumentations"),
         "data_yaml": str(data_yaml),
         "wandb_id": None,
     }
@@ -126,6 +191,8 @@ def train(
         meta = load_meta(out)
         # The checkpoint points at this file; refresh it in case the export moved.
         write_runtime_data_yaml(prepared, Path(meta["data_yaml"]))
+        if cfg.get("train_args"):
+            log("warning: `train_args` are not re-applied on --resume; using the checkpoint's")
     else:
         meta = start_run(cfg, prepared, config_path, log)
 
@@ -166,19 +233,7 @@ def train(
         if resume:
             YOLO(str(last)).train(resume=True, **overrides)
         else:
-            YOLO(cfg["model"]).train(
-                data=meta["data_yaml"],
-                project=str(out.parent),
-                name=out.name,
-                exist_ok=True,  # start_run created the dir; never let Ultralytics pick name2
-                save_period=-1,  # only last.pt and best.pt (disk space)
-                imgsz=cfg["imgsz"],
-                epochs=cfg["epochs"],
-                batch=cfg["batch"],
-                seed=cfg["seed"],
-                workers=cfg["workers"],
-                **overrides,
-            )
+            YOLO(cfg["model"]).train(**train_kwargs(cfg, meta["data_yaml"], out), **overrides)
     finally:
         if use_wandb:
             wandb.finish()

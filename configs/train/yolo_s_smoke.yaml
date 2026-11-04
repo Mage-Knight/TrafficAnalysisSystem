@@ -12,3 +12,7 @@ epochs: 3
 batch: 16
 seed: 0
 workers: 8  # Ultralytics caps this at the CPU count
+# Extra YOLO.train() arguments, e.g. augmentation (see Ultralytics cfg/default.yaml):
+# train_args:
+#   mosaic: 0.5
+#   hsv_v: 0.6
